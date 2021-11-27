@@ -10,6 +10,24 @@ import {
   PokemonErrorBoundary,
 } from '../pokemon'
 
+function useSafeDispatch(dispatch) {
+  const mounted = React.useRef(false)
+
+  React.useLayoutEffect(() => {
+    mounted.current = true
+
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
+  return React.useCallback((...args) => {
+    if (mounted.current) {
+      dispatch(...args)
+    }
+  }, [dispatch])
+}
+
 function asyncReducer(state, action) {
   switch (action.type) {
     case 'pending': {
@@ -35,21 +53,7 @@ function useAsync(initialState) {
     ...initialState,
   })
 
-  const mounted = React.useRef(false)
-
-  React.useEffect(() => {
-    mounted.current = true
-
-    return () => {
-      mounted.current = false
-    }
-  }, [])
-
-  const dispatch = React.useCallback((...args) => {
-    if (mounted.current) {
-      unsafeDispatch(...args)
-    }
-  }, [])
+  const dispatch = useSafeDispatch(unsafeDispatch)
 
   const run = React.useCallback(promise => {
     dispatch({type: 'pending'})
