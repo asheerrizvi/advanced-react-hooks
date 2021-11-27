@@ -35,14 +35,18 @@ function useAsync(initialState) {
     ...initialState,
   })
 
-  const run = React.useCallback(promise => {
+  const run = React.useCallback((promise, mounted) => {
     dispatch({type: 'pending'})
     promise.then(
       data => {
-        dispatch({type: 'resolved', data})
+        if (mounted.current) {
+          dispatch({type: 'resolved', data})
+        }
       },
       error => {
-        dispatch({type: 'rejected', error})
+        if (mounted.current) {
+          dispatch({type: 'rejected', error})
+        }
       },
     )
   }, [])
@@ -51,6 +55,7 @@ function useAsync(initialState) {
 }
 
 function PokemonInfo({pokemonName}) {
+  const mounted = React.useRef(false)
   const {
     data: pokemon,
     status,
@@ -59,11 +64,19 @@ function PokemonInfo({pokemonName}) {
   } = useAsync({status: pokemonName ? 'pending' : 'idle'})
 
   React.useEffect(() => {
+    mounted.current = true
+
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
+  React.useEffect(() => {
     if (!pokemonName) {
       return
     }
     const pokemonPromise = fetchPokemon(pokemonName)
-    run(pokemonPromise)
+    run(pokemonPromise, mounted)
   }, [pokemonName, run])
 
   switch (status) {
